@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "965153041589",
+    "project_id": "home-plant-app-dav",
+    "storage_bucket": "home-plant-app-dav.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965153041589:android:7ea5486bf4532c0529a2fc",
+        "android_client_info": {
+          "package_name": "com.ducanhlaai.plant_care_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-w-QtGmhGDaFhlL6aKuTei5O3YMxhwZM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
