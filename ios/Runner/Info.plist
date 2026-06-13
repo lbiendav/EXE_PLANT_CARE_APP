@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+    <string>HomePlant cần quyền truy cập Camera để bạn có thể chụp ảnh cây trồng của mình.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>HomePlant cần quyền truy cập Thư viện ảnh để bạn có thể chọn ảnh cây trồng có sẵn.</string>
 </dict>
 </plist>
