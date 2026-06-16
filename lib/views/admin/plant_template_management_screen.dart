@@ -27,7 +27,7 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
     if (isEditing && existingData != null) {
       _nameCtrl.text = existingData['name'] ?? '';
       _sciNameCtrl.text = existingData['scientificName'] ?? '';
-      _imgCtrl.text = existingData['image'] ?? '';
+      _imgCtrl.text = existingData['imageUrl'] ?? '';
       _descCtrl.text = existingData['description'] ?? '';
 
       var care = existingData['care'] ?? {};
@@ -58,7 +58,7 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
                   const SizedBox(height: 16),
                   TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: "Tên cây"), validator: (v) => v!.isEmpty ? "Không bỏ trống" : null),
                   TextFormField(controller: _sciNameCtrl, decoration: const InputDecoration(labelText: "Tên khoa học")),
-                  TextFormField(controller: _imgCtrl, decoration: const InputDecoration(labelText: "Link ảnh đại diện cây")),
+                  TextFormField(controller: _imgCtrl, decoration: const InputDecoration(labelText: "Link ảnh đại diện cây (imageUrl)")),
                   TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: "Mô tả ngắn gọn"), maxLines: 2),
                   const SizedBox(height: 12),
                   const Text("Chế độ chăm sóc", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
@@ -70,10 +70,12 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
                   ElevatedButton(
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
+                        String finalImg = _imgCtrl.text.trim().isEmpty ? 'https://via.placeholder.com/150' : _imgCtrl.text.trim();
+
                         Map<String, dynamic> plantData = {
                           'name': _nameCtrl.text.trim(),
                           'scientificName': _sciNameCtrl.text.trim(),
-                          'image': _imgCtrl.text.trim().isEmpty ? 'https://via.placeholder.com/150' : _imgCtrl.text.trim(),
+                          'imageUrl': finalImg, // Chỉ cập nhật duy nhất vào imageUrl
                           'description': _descCtrl.text.trim(),
                           'care': {
                             'light': _lightCtrl.text.trim(),
@@ -84,6 +86,7 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
                         };
 
                         if (isEditing) {
+                          // Đã bỏ hoàn toàn dòng lệnh xóa tự động FieldValue.delete() ở đây
                           await FirebaseFirestore.instance.collection('plant_templates').doc(docId).update(plantData);
                         } else {
                           plantData['diseases'] = [];
@@ -122,7 +125,6 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // SỬ DỤNG ĐÚNG COLLECTION CỦA BẠN LÀ plant_templates
         stream: FirebaseFirestore.instance.collection('plant_templates').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
@@ -136,6 +138,7 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
             itemBuilder: (context, index) {
               var doc = templates[index];
               var data = doc.data() as Map<String, dynamic>;
+              String displayImg = data['imageUrl'] ?? 'https://via.placeholder.com/50';
 
               return Card(
                 elevation: 0,
@@ -145,7 +148,7 @@ class _PlantTemplateManagementScreenState extends State<PlantTemplateManagementS
                 child: ListTile(
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(data['image'] ?? 'https://via.placeholder.com/50', width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.image)),
+                    child: Image.network(displayImg, width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.image)),
                   ),
                   title: Text(data['name'] ?? 'Chưa có tên', style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(data['scientificName'] ?? "", style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),

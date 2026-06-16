@@ -1,6 +1,7 @@
 // lib/views/admin/user_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_detail_admin_screen.dart';
 
 class UserManagementScreen extends StatelessWidget {
   const UserManagementScreen({super.key});
@@ -56,10 +57,21 @@ class UserManagementScreen extends StatelessWidget {
               String name = userData['displayName'] ?? "Người yêu cây";
               String email = userData['email'] ?? "Không có email";
               String? avatar = userData['avatarUrl'];
-              bool isLocked = userData['isLocked'] ?? false; // Trường kiểm tra tài khoản bị khóa hay không
+              bool isLocked = userData['isLocked'] ?? false;
               String role = userData['role'] ?? "user";
 
               return ListTile(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UserDetailAdminScreen(
+                        userId: userDoc.id,
+                        userData: userData,
+                      ),
+                    ),
+                  );
+                },
                 contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 leading: CircleAvatar(
                   backgroundColor: Colors.grey.shade100,
@@ -68,7 +80,15 @@ class UserManagementScreen extends StatelessWidget {
                 ),
                 title: Row(
                   children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    // ĐÃ SỬA LỖI TRÀN VIỀN Ở ĐÂY: Thêm Expanded và TextOverflow.ellipsis
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis, // Cắt thành ... nếu tên quá dài
+                      ),
+                    ),
                     if (role == "admin") ...[
                       const SizedBox(width: 6),
                       Container(
@@ -81,7 +101,7 @@ class UserManagementScreen extends StatelessWidget {
                 ),
                 subtitle: Text(email, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                 trailing: role == "admin"
-                    ? null // Quyền Admin tối cao không thể tự khóa lẫn nhau để tránh lỗi hệ thống
+                    ? null
                     : TextButton(
                   onPressed: () => _toggleLockUser(context, userId, isLocked),
                   style: TextButton.styleFrom(

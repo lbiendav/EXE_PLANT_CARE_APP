@@ -17,7 +17,10 @@ class ArticleDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String title = articleData['title'] ?? 'Bài viết kiến thức';
-    String imageUrl = articleData['imageUrl'] ?? 'https://via.placeholder.com/600x400';
+
+    // ĐÃ SỬA: Lấy dữ liệu từ trường coverImage cho khớp với database
+    String imageUrl = articleData['coverImage'] ?? 'https://via.placeholder.com/600x400';
+
     String content = articleData['content'] ?? 'Nội dung đang được cập nhật...';
     Timestamp? createdAt = articleData['createdAt'] as Timestamp?;
 

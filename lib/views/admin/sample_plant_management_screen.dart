@@ -1,6 +1,7 @@
 // lib/views/admin/sample_plant_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../library/library_detail_screen.dart';
 
 class SamplePlantManagementScreen extends StatefulWidget {
   const SamplePlantManagementScreen({super.key});
@@ -21,8 +22,28 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
   final _soilCtrl = TextEditingController();
   final _fertCtrl = TextEditingController();
 
-  // Hàm mở trang/hộp thoại để Thêm mới một cây mẫu lên Firestore Cloud
-  void _openAddPlantSheet(BuildContext context) {
+  void _openPlantSheet(BuildContext context, {String? docId, Map<String, dynamic>? existingData}) {
+    bool isEditing = docId != null;
+
+    if (isEditing && existingData != null) {
+      _nameCtrl.text = existingData['name'] ?? '';
+      _sciNameCtrl.text = existingData['scientificName'] ?? '';
+
+      // ĐÃ XÓA FALLBACK: Chỉ nạp dữ liệu từ trường imageUrl
+      _imgCtrl.text = existingData['imageUrl'] ?? '';
+
+      _descCtrl.text = existingData['description'] ?? '';
+
+      var care = existingData['care'] ?? {};
+      _lightCtrl.text = care['light'] ?? '';
+      _waterCtrl.text = care['water'] ?? '';
+      _soilCtrl.text = care['soil'] ?? '';
+      _fertCtrl.text = care['fertilizer'] ?? '';
+    } else {
+      _nameCtrl.clear(); _sciNameCtrl.clear(); _imgCtrl.clear(); _descCtrl.clear();
+      _lightCtrl.clear(); _waterCtrl.clear(); _soilCtrl.clear(); _fertCtrl.clear();
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -37,11 +58,11 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text("Thêm cây mẫu mới", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(isEditing ? "Chỉnh sửa Thư viện cây" : "Thêm cây mới vào Thư viện", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: "Tên cây"), validator: (v) => v!.isEmpty ? "Không bỏ trống" : null),
                   TextFormField(controller: _sciNameCtrl, decoration: const InputDecoration(labelText: "Tên khoa học")),
-                  TextFormField(controller: _imgCtrl, decoration: const InputDecoration(labelText: "Link ảnh đại diện cây")),
+                  TextFormField(controller: _imgCtrl, decoration: const InputDecoration(labelText: "Link ảnh đại diện cây (imageUrl)")),
                   TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: "Mô tả ngắn gọn"), maxLines: 2),
                   const SizedBox(height: 12),
                   const Text("Chế độ chăm sóc", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
@@ -53,10 +74,12 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
                   ElevatedButton(
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        await FirebaseFirestore.instance.collection('sample_plants').add({
+                        String finalImg = _imgCtrl.text.trim().isEmpty ? 'https://via.placeholder.com/150' : _imgCtrl.text.trim();
+
+                        Map<String, dynamic> plantData = {
                           'name': _nameCtrl.text.trim(),
                           'scientificName': _sciNameCtrl.text.trim(),
-                          'image': _imgCtrl.text.trim().isEmpty ? 'https://via.placeholder.com/150' : _imgCtrl.text.trim(),
+                          'imageUrl': finalImg, // Chỉ ghi vào imageUrl
                           'description': _descCtrl.text.trim(),
                           'care': {
                             'light': _lightCtrl.text.trim(),
@@ -64,14 +87,20 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
                             'soil': _soilCtrl.text.trim(),
                             'fertilizer': _fertCtrl.text.trim(),
                           },
-                          'diseases': [] // Mặc định tạo mảng rỗng cho Admin cập nhật sau
-                        });
-                        _clearControllers();
+                        };
+
+                        if (isEditing) {
+                          await FirebaseFirestore.instance.collection('sample_plants').doc(docId).update(plantData);
+                        } else {
+                          plantData['diseases'] = [];
+                          await FirebaseFirestore.instance.collection('sample_plants').add(plantData);
+                        }
+
                         if (ctx.mounted) Navigator.pop(ctx);
                       }
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: const Text("ĐĂNG CÂY MẪU lên CLOUD", style: TextStyle(color: Colors.white)),
+                    child: Text(isEditing ? "LƯU THAY ĐỔI" : "ĐĂNG LÊN THƯ VIỆN", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -83,11 +112,6 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
     );
   }
 
-  void _clearControllers() {
-    _nameCtrl.clear(); _sciNameCtrl.clear(); _imgCtrl.clear(); _descCtrl.clear();
-    _lightCtrl.clear(); _waterCtrl.clear(); _soilCtrl.clear(); _fertCtrl.clear();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,10 +120,10 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text("Quản lý cây mẫu bách khoa", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text("Quản lý Thư viện cây", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openAddPlantSheet(context),
+        onPressed: () => _openPlantSheet(context),
         backgroundColor: const Color(0xFFC62828),
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -110,15 +134,18 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
           var samplePlants = snapshot.data!.docs;
 
           if (samplePlants.isEmpty) {
-            return const Center(child: Text("Hội đồng Admin chưa đăng cây mẫu nào lên Cloud."));
+            return const Center(child: Text("Thư viện đang trống."));
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: samplePlants.length,
             itemBuilder: (context, index) {
-              var plantDoc = samplePlants[index];
-              var plant = plantDoc.data() as Map<String, dynamic>;
+              var doc = samplePlants[index];
+              var data = doc.data() as Map<String, dynamic>;
+
+              // ĐÃ XÓA FALLBACK: Chỉ đọc đúng trường imageUrl từ Firestore
+              String displayImg = data['imageUrl'] ?? 'https://via.placeholder.com/50';
 
               return Card(
                 elevation: 0,
@@ -126,17 +153,53 @@ class _SamplePlantManagementScreenState extends State<SamplePlantManagementScree
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
                 child: ListTile(
+                  onTap: () {
+                    Map<String, dynamic> adaptedData = {
+                      'name': data['name'] ?? 'Cây chưa đặt tên',
+                      'scientificName': data['scientificName'] ?? '',
+                      'image': displayImg, // Đóng gói dữ liệu để chuyển sang màn hình detail (màn detail vẫn đọc key 'image')
+                      'description': data['description'] ?? 'Chưa có mô tả',
+                      'care': data['care'] ?? {'light': '', 'water': '', 'soil': '', 'fertilizer': ''},
+                      'diseases': data['diseases'] ?? []
+                    };
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LibraryDetailScreen(plantData: adaptedData),
+                      ),
+                    );
+                  },
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(plant['image'], width: 50, height: 50, fit: BoxFit.cover),
+                    child: Image.network(displayImg, width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.image)),
                   ),
-                  title: Text(plant['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(plant['scientificName'] ?? "", style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () async {
-                      await FirebaseFirestore.instance.collection('sample_plants').doc(plantDoc.id).delete();
-                    },
+                  title: Text(
+                    data['name'] ?? 'Chưa có tên',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    data['scientificName'] ?? "",
+                    style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                          onPressed: () => _openPlantSheet(context, docId: doc.id, existingData: data),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          onPressed: () => FirebaseFirestore.instance.collection('sample_plants').doc(doc.id).delete(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

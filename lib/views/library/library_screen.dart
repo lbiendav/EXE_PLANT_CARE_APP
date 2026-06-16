@@ -40,7 +40,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ),
 
-          // ĐÃ ĐỔI: Chuyển sang StreamBuilder kết nối trực tiếp với Firestore Cloud thay vì mảng dữ liệu tĩnh
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('sample_plants').snapshots(),
@@ -49,7 +48,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
                 var cloudDocs = snapshot.data!.docs;
 
-                // Thuật toán lọc tìm kiếm động ngay trên danh sách tải về
                 var filteredPlants = cloudDocs.where((doc) {
                   var data = doc.data() as Map<String, dynamic>;
                   String name = (data['name'] ?? "").toString().toLowerCase();
@@ -79,11 +77,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     var plantDoc = filteredPlants[index];
                     var plant = plantDoc.data() as Map<String, dynamic>;
 
-                    // Chuẩn bị dữ liệu để tương thích với màn hình cũ
+                    // ĐÃ SỬA: Đọc từ imageUrl
                     Map<String, dynamic> adaptedData = {
                       'name': plant['name'] ?? 'Cây chưa đặt tên',
                       'scientificName': plant['scientificName'] ?? '',
-                      'image': plant['image'] ?? 'https://via.placeholder.com/150',
+                      'imageUrl': plant['imageUrl'] ?? 'https://via.placeholder.com/150',
                       'description': plant['description'] ?? 'Chưa có mô tả',
                       'care': plant['care'] ?? {'light': '', 'water': '', 'soil': '', 'fertilizer': ''},
                       'diseases': plant['diseases'] ?? []
@@ -105,7 +103,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             Expanded(
                               child: ClipRRect(
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                child: Image.network(adaptedData['image'], fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: Colors.grey.shade200)),
+                                // ĐÃ SỬA: Lấy key imageUrl để vẽ hình
+                                child: Image.network(adaptedData['imageUrl'], fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: Colors.grey.shade200)),
                               ),
                             ),
                             Padding(

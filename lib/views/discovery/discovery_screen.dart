@@ -1,7 +1,8 @@
+// lib/views/discovery_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'template_detail_screen.dart'; // thêm chi tiết cây nổi bật.
-
+import 'template_detail_screen.dart';
+import 'article_detail_screen.dart';
 
 class DiscoveryScreen extends StatelessWidget {
   const DiscoveryScreen({super.key});
@@ -16,7 +17,7 @@ class DiscoveryScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "HomePlant",
+          "Trang chủ",
           style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -37,7 +38,7 @@ class DiscoveryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // StreamBuilder lắng nghe dữ liệu từ collection 'plant_templates'
+            // STREAM BUIDER 1: KÉO DỮ LIỆU CÂY NỔI BẬT
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('plant_templates').snapshots(),
               builder: (context, snapshot) {
@@ -57,7 +58,6 @@ class DiscoveryScreen extends StatelessWidget {
                     itemCount: templates.length,
                     itemBuilder: (context, index) {
                       var plant = templates[index].data() as Map<String, dynamic>;
-                      // Truyền BuildContext và Dữ liệu vào hàm tạo thẻ
                       return _buildPlantCard(context, plant);
                     },
                   ),
@@ -72,19 +72,40 @@ class DiscoveryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            _buildArticleTile(context, "Bí quyết cứu sống Sen Đá mùa mưa bão", "Chuyên gia Trần Đắc"),
-            _buildArticleTile(context, "Làm sao để Lưỡi Hổ ra hoa?", "HomePlant Admin"),
+            // STREAM BUIDER 2: KÉO DỮ LIỆU BÀI VIẾT TỪ CLOUD
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('articles').orderBy('createdAt', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Text("Chưa có bài viết nào.");
+                }
+
+                var articles = snapshot.data!.docs;
+
+                return ListView.builder(
+                  shrinkWrap: true, // Ép ListView nằm gọn trong SingleChildScrollView
+                  physics: const NeverScrollableScrollPhysics(), // Tắt cuộn độc lập để cuộn chung với trang
+                  itemCount: articles.length,
+                  itemBuilder: (context, index) {
+                    var articleData = articles[index].data() as Map<String, dynamic>;
+                    return _buildArticleTile(context, articleData);
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  // Widget hiển thị thẻ cây trồng (Đã thêm GestureDetector)
+  // Thẻ Cây Trồng
   Widget _buildPlantCard(BuildContext context, Map<String, dynamic> plant) {
     return GestureDetector(
       onTap: () {
-        // Chuyển sang màn hình Bách khoa khi chạm vào
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -146,24 +167,45 @@ class DiscoveryScreen extends StatelessWidget {
     );
   }
 
-  // Widget hiển thị bài viết (Tạm thời chỉ làm hiệu ứng chạm)
-  Widget _buildArticleTile(BuildContext context, String title, String author) {
+  // ĐÃ SỬA: Thẻ Bài Viết (Nhận Map data từ Firestore)
+  Widget _buildArticleTile(BuildContext context, Map<String, dynamic> data) {
+    // Đọc chính xác trường coverImage và title từ cấu trúc Database của bạn
+    String title = data['title'] ?? 'Bài viết không có tiêu đề';
+    String imgUrl = data['coverImage'] ?? 'https://via.placeholder.com/150';
+
     return ListTile(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tính năng đọc bài viết đang phát triển")));
+        // ĐIỀU HƯỚNG TỚI MÀN HÌNH ĐỌC CHI TIẾT
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ArticleDetailScreen(articleData: data),
+          ),
+        );
       },
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imgUrl,
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 60,
+            height: 60,
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.article_outlined, color: Colors.grey),
+          ),
         ),
-        child: const Icon(Icons.article_outlined, color: Colors.grey),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text("Bởi $author", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+        maxLines: 2, // Cho phép tên bài rớt xuống 2 dòng
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: const Text("Bởi Chuyên gia HomePlant", style: TextStyle(color: Colors.grey, fontSize: 12)),
       trailing: const Icon(Icons.chevron_right),
     );
   }

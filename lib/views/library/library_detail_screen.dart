@@ -1,3 +1,4 @@
+// lib/views/library_detail_screen.dart
 import 'package:flutter/material.dart';
 
 class LibraryDetailScreen extends StatelessWidget {
@@ -85,8 +86,8 @@ class LibraryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final care = plantData['care'] as Map<String, dynamic>;
-    final diseases = plantData['diseases'] as List<dynamic>;
+    final care = plantData['care'] as Map<String, dynamic>? ?? {};
+    final diseases = plantData['diseases'] as List<dynamic>? ?? [];
 
     return DefaultTabController(
       length: 2,
@@ -105,7 +106,8 @@ class LibraryDetailScreen extends StatelessWidget {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(plantData['image'], fit: BoxFit.cover),
+                      // ĐÃ SỬA: Đọc từ key imageUrl
+                      Image.network(plantData['imageUrl'] ?? 'https://via.placeholder.com/600', fit: BoxFit.cover),
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -123,11 +125,11 @@ class LibraryDetailScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              plantData['name'],
+                              plantData['name'] ?? '',
                               style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              plantData['scientificName'],
+                              plantData['scientificName'] ?? '',
                               style: const TextStyle(color: Colors.white70, fontSize: 16, fontStyle: FontStyle.italic),
                             ),
                           ],
@@ -141,7 +143,7 @@ class LibraryDetailScreen extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Text(
-                    plantData['description'],
+                    plantData['description'] ?? '',
                     style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black87),
                   ),
                 ),
@@ -169,15 +171,17 @@ class LibraryDetailScreen extends StatelessWidget {
               ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  _buildCareItem(Icons.wb_sunny_outlined, Colors.orange, "Ánh sáng", care['light']),
-                  _buildCareItem(Icons.water_drop_outlined, Colors.blue, "Tưới nước", care['water']),
-                  _buildCareItem(Icons.landscape_outlined, Colors.brown, "Đất trồng", care['soil']),
-                  _buildCareItem(Icons.eco_outlined, Colors.green, "Phân bón", care['fertilizer']),
+                  _buildCareItem(Icons.wb_sunny_outlined, Colors.orange, "Ánh sáng", care['light'] ?? ''),
+                  _buildCareItem(Icons.water_drop_outlined, Colors.blue, "Tưới nước", care['water'] ?? ''),
+                  _buildCareItem(Icons.landscape_outlined, Colors.brown, "Đất trồng", care['soil'] ?? ''),
+                  _buildCareItem(Icons.eco_outlined, Colors.green, "Phân bón", care['fertilizer'] ?? ''),
                 ],
               ),
 
               // TAB 2: BỆNH VÀ CÁCH XỬ LÝ
-              ListView.builder(
+              diseases.isEmpty
+                  ? const Center(child: Text("Cây này trộm vía rất khỏe, chưa có dữ liệu bệnh!"))
+                  : ListView.builder(
                 padding: const EdgeInsets.all(24),
                 itemCount: diseases.length,
                 itemBuilder: (context, index) {

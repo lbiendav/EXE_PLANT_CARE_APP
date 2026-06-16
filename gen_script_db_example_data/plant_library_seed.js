@@ -9,12 +9,12 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// BỘ DỮ LIỆU 8 CÂY MẪU CHUẨN CHỈ (FULL TRƯỜNG)
+// BỘ DỮ LIỆU 8 CÂY MẪU CHUẨN CHỈ (ĐÃ ĐỔI THÀNH imageUrl)
 const samplePlants = [
     {
         name: "Kim Tiền",
         scientificName: "Zamioculcas zamiifolia",
-        image: "https://images.unsplash.com/photo-1597055181300-e3623ddfac99?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Loài cây tượng trưng cho sự mạnh mẽ, kiên cường và mang lại tài lộc phong thủy. Cực kỳ dễ chăm sóc, phù hợp cho người bận rộn.",
         care: {
             light: "Ánh sáng tán xạ, chịu được bóng râm râm mát. Tránh nắng gắt trực tiếp.",
@@ -38,7 +38,7 @@ const samplePlants = [
     {
         name: "Lưỡi Hổ",
         scientificName: "Sansevieria trifasciata",
-        image: "https://images.unsplash.com/photo-1599009587841-f2cbdf298c9d?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Chuyên gia lọc không khí ban đêm, hấp thụ formaldehyde và nhả oxy. Rất thích hợp để trong phòng ngủ hoặc bàn làm việc.",
         care: {
             light: "Sống tốt ở mọi điều kiện từ bóng râm đến nắng chói.",
@@ -57,7 +57,7 @@ const samplePlants = [
     {
         name: "Bàng Singapore",
         scientificName: "Ficus lyrata",
-        image: "https://images.unsplash.com/photo-1610842857417-66a9d702316e?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Cây nội thất mang phong cách hiện đại, thanh lịch với những chiếc lá to bản, xanh bóng mang vẻ đẹp nhiệt đới.",
         care: {
             light: "Cần nhiều ánh sáng gián tiếp (cạnh cửa sổ). Thiếu sáng lá sẽ rụng.",
@@ -76,7 +76,7 @@ const samplePlants = [
     {
         name: "Trầu Bà Xanh",
         scientificName: "Epipremnum aureum",
-        image: "https://images.unsplash.com/photo-1615456247385-e36f9a0c78a0?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Dòng cây dây leo quốc dân, sức sống mãnh liệt. Có thể trồng chậu đất hoặc trồng thủy sinh đều đẹp.",
         care: {
             light: "Ánh sáng bóng râm hoặc đèn huỳnh quang văn phòng.",
@@ -95,7 +95,7 @@ const samplePlants = [
     {
         name: "Lan Ý",
         scientificName: "Spathiphyllum",
-        image: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Hoa màu trắng thanh khiết, tượng trưng cho sự bình yên. Có khả năng lọc các độc tố như benzen và trichloroethylene.",
         care: {
             light: "Tránh nắng trực tiếp. Thích hợp ánh sáng gián tiếp hoặc đèn văn phòng.",
@@ -119,7 +119,7 @@ const samplePlants = [
     {
         name: "Nha Đam",
         scientificName: "Aloe vera",
-        image: "https://images.unsplash.com/photo-1596547609652-9cb5d8d737b8?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Cây thảo dược đa năng, vừa làm cảnh vừa có thể dùng để làm dịu vết bỏng hoặc chăm sóc da.",
         care: {
             light: "Thích nắng ấm. Để cạnh cửa sổ có ánh nắng hắt vào là tốt nhất.",
@@ -138,7 +138,7 @@ const samplePlants = [
     {
         name: "Cây Nhện (Mẫu Tử)",
         scientificName: "Chlorophytum comosum",
-        image: "https://images.unsplash.com/photo-1620127682229-33388a1fa236?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Cây thả rủ tuyệt đẹp, thường mọc ra các chồi non lủng lẳng như mạng nhện. Lọc sạch CO2 rất tốt.",
         care: {
             light: "Ánh sáng gián tiếp cường độ vừa phải. Chịu bóng râm khá tốt.",
@@ -157,7 +157,7 @@ const samplePlants = [
     {
         name: "Cọ Cảnh",
         scientificName: "Chamaedorea elegans",
-        image: "https://images.unsplash.com/photo-1606813296229-47e113dc2558?auto=format&fit=crop&q=80&w=500",
+        imageUrl: "https://i.ibb.co/MkMj38WM/plant.png",
         description: "Mang không gian nhiệt đới thu nhỏ vào phòng khách. Cây phát triển chậm, tán xòe đẹp, thân thiện với thú cưng.",
         care: {
             light: "Ánh sáng yếu đến trung bình. Cấm kỵ nắng trực tiếp.",
