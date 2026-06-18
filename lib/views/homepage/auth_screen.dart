@@ -1,3 +1,4 @@
+// lib/views/auth_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,6 +17,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool _isLogin = true;
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -24,13 +26,13 @@ class _AuthScreenState extends State<AuthScreen> {
   final Color primaryGreen = const Color(0xFF2E7D32);
 
   Future<void> _submitAuth() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập đầy đủ thông tin!")));
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập đầy đủ thông tin!"), backgroundColor: Colors.red));
       return;
     }
 
-    if (!_isLogin && _nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập Tên của bạn!")));
+    if (!_isLogin && _nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập Tên của bạn!"), backgroundColor: Colors.red));
       return;
     }
 
@@ -38,41 +40,115 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (_isLogin) {
-        await _auth.signInWithEmailAndPassword(
+        // --- XỬ LÝ ĐĂNG NHẬP ---
+        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+
+        User? user = userCredential.user;
+        if (user != null) {
+          // BẮT BUỘC: Đồng bộ lại trạng thái tài khoản từ máy chủ Firebase
+          // để kiểm tra xem user đã bấm vào link trong Gmail hay chưa
+          await user.reload();
+
+          // Lấy lại thông tin user sau khi reload
+          user = _auth.currentUser;
+
+          if (user != null && !user.emailVerified) {
+            // Nếu chưa bấm link kích hoạt -> Đăng xuất ngay lập tức và chặn không cho vào app
+            await _auth.signOut();
+            throw FirebaseAuthException(
+              code: 'email-unverified',
+              message: 'Tài khoản chưa được kích hoạt! Vui lòng vào hộp thư Gmail của bạn để bấm link xác thực.',
+            );
+          }
+
+          if (user != null) {
+            // Kiểm tra trạng thái khoá tài khoản trên Firestore
+            DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+            if (userDoc.exists && userDoc.data() != null) {
+              final data = userDoc.data() as Map<String, dynamic>;
+              bool isLocked = data.containsKey('isLocked') ? (data['isLocked'] == true) : false;
+              
+              if (isLocked) {
+                await _auth.signOut();
+                throw FirebaseAuthException(
+                  code: 'user-locked',
+                  message: 'Tài khoản bạn đã vi phạm tiêu chuẩn cộng đồng hãy liên hệ admin qua "example@gmail.com".',
+                );
+              }
+            }
+          }
+        }
+
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
+        }
       } else {
+        // --- XỬ LÝ ĐĂNG KÝ ---
         UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        await _firestore.collection('users').doc(userCredential.user!.uid).set({
-          'email': _emailController.text.trim(),
-          'displayName': _nameController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'avatarUrl': null,
-        });
-      }
+        User? user = userCredential.user;
 
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
+        if (user != null) {
+          // 1. Phát lệnh gửi link xác thực về hòm thư Gmail của user
+          await user.sendEmailVerification();
+
+          // 2. Tạo bản ghi dữ liệu đầy đủ trường thông tin lên Firestore Cloud
+          await _firestore.collection('users').doc(user.uid).set({
+            'uid': user.uid,
+            'email': user.email,
+            'displayName': _nameController.text.trim(),
+            'avatarUrl': 'https://i.pravatar.cc/150?u=${user.uid}',
+            'role': 'user',
+            'membership': 'normal',
+            'createdAt': FieldValue.serverTimestamp(),
+            'isLocked': false,
+          });
+
+          // 3. Đăng xuất ngay lập tức để chặn việc tự động đăng nhập khi vừa tạo tài khoản xong
+          await _auth.signOut();
+
+          if (mounted) {
+            // Báo thông báo nhắc nhở rạch ròi và lật giao diện sang màn hình Đăng nhập
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Đăng ký thành công! Bạn CẦN VÀO GMAIL bấm link xác thực để kích hoạt tài khoản."),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 6),
+                )
+            );
+            setState(() {
+              _isLogin = true;
+            });
+          }
+        }
       }
     } on FirebaseAuthException catch (e) {
       String message = "Đã xảy ra lỗi!";
-      if (e.code == 'user-not-found') message = "Không tìm thấy tài khoản với email này.";
-      else if (e.code == 'wrong-password') message = "Mật khẩu không chính xác.";
-      else if (e.code == 'email-already-in-use') message = "Email này đã được sử dụng.";
-      else if (e.code == 'weak-password') message = "Mật khẩu quá yếu.";
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
+      // Khối bắt lỗi xử lý kích hoạt tài khoản và tài khoản trùng lặp
+      if (e.code == 'email-unverified') message = e.message ?? "Chưa xác thực email.";
+      else if (e.code == 'user-locked') message = e.message ?? "Tài khoản bị khoá.";
+      else if (e.code == 'email-already-in-use') message = "Email này đã được sử dụng. Vui lòng đăng nhập!";
+      else if (e.code == 'weak-password') message = "Mật khẩu quá yếu (tối thiểu 6 ký tự).";
+      else if (e.code == 'invalid-email') message = "Định dạng email không hợp lệ.";
+      else if (e.code == 'user-not-found' || e.code == 'invalid-credential') message = "Sai tài khoản hoặc mật khẩu.";
+      else if (e.code == 'wrong-password') message = "Mật khẩu không chính xác.";
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // --- HÀM MỚI: XỬ LÝ QUÊN MẬT KHẨU ---
+  // --- HÀM XỬ LÝ QUÊN MẬT KHẨU ---
   void _showForgotPasswordDialog() {
     TextEditingController resetEmailController = TextEditingController();
     showDialog(
@@ -122,7 +198,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         }
                       } catch (e) {
                         if (ctx.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi hệ thống hoặc Email không tồn tại."), backgroundColor: Colors.red));
                         }
                       } finally {
                         setDialogState(() => isSending = false);
@@ -191,16 +267,26 @@ class _AuthScreenState extends State<AuthScreen> {
 
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: "Mật khẩu",
                   prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 12),
 
-              // NÚT QUÊN MẬT KHẨU CHO MÀN HÌNH ĐĂNG NHẬP
               if (_isLogin)
                 Align(
                   alignment: Alignment.centerRight,
@@ -241,6 +327,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         _emailController.clear();
                         _passwordController.clear();
                         _nameController.clear();
+                        _obscurePassword = true;
                       });
                     },
                     child: Text(

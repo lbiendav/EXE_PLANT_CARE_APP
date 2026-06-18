@@ -31,6 +31,18 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(settings: initializationSettings);
+    await requestPermissions();
+  }
+
+  static Future<void> requestPermissions() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      await androidImplementation.requestExactAlarmsPermission();
+    }
   }
 
   // 2. Hàm đặt lịch hẹn giờ bật thông báo công khai

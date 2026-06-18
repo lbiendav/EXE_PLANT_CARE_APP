@@ -1,3 +1,4 @@
+// lib/views/plant_detail_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -100,7 +101,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     }
   }
 
-  // --- ĐÃ NÂNG CẤP LẠI HÀM CÀI ĐẶT LỊCH TRÌNH ---
+  // --- HÀM CÀI ĐẶT LỊCH TRÌNH (ĐÃ FIX LỖI ẨN) ---
   void _showScheduleSheet(BuildContext context, String plantName, int? wFreq, int? fFreq, int? rFreq) {
     const List<int?> validValues = [null, 10, 30, 86400, 172800, 259200, 432000, 604800, 1209600, 2592000, 7776000, 15552000];
 
@@ -141,71 +142,91 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           onPressed: _isSettingSchedule ? null : () async {
                             setModalState(() => _isSettingSchedule = true);
 
-                            Map<String, dynamic> updates = {};
+                            try {
+                              Map<String, dynamic> updates = {};
 
-                            // XỬ LÝ LỊCH TƯỚI NƯỚC
-                            if (tempW != wFreq) {
-                              updates["wateringFrequency"] = tempW;
-                              if (tempW == null) {
-                                // Nếu Chọn "Không cài đặt" -> Giết chết thông báo cũ
-                                await NotificationService.cancelNotification("${widget.docId}_water".hashCode);
-                              } else {
-                                // Nếu đặt lịch mới -> Bắt đầu đếm ngược từ ĐÚNG BÂY GIỜ
-                                updates["lastWatered"] = FieldValue.serverTimestamp();
-                                await NotificationService.scheduleNotification(
-                                  id: "${widget.docId}_water".hashCode,
-                                  title: "💧 Đã đến lịch tưới nước!",
-                                  body: "Cây '$plantName' đang khát, hãy tưới nước cho cây nhé!",
-                                  secondsFromNow: tempW!,
-                                );
+                              // Lên kịch bản cập nhật Firebase
+                              if (tempW != wFreq) {
+                                updates["wateringFrequency"] = tempW;
+                                if (tempW != null) updates["lastWatered"] = FieldValue.serverTimestamp();
                               }
-                            }
 
-                            // XỬ LÝ LỊCH BÓN PHÂN
-                            if (tempF != fFreq) {
-                              updates["fertilizingFrequency"] = tempF;
-                              if (tempF == null) {
-                                await NotificationService.cancelNotification("${widget.docId}_fertilize".hashCode);
-                              } else {
-                                updates["lastFertilized"] = FieldValue.serverTimestamp();
-                                await NotificationService.scheduleNotification(
-                                  id: "${widget.docId}_fertilize".hashCode,
-                                  title: "🌿 Lịch bón phân!",
-                                  body: "Đến lúc bổ sung dinh dưỡng cho '$plantName' rồi.",
-                                  secondsFromNow: tempF!,
-                                );
+                              if (tempF != fFreq) {
+                                updates["fertilizingFrequency"] = tempF;
+                                if (tempF != null) updates["lastFertilized"] = FieldValue.serverTimestamp();
                               }
-                            }
 
-                            // XỬ LÝ LỊCH THAY CHẬU
-                            if (tempR != rFreq) {
-                              updates["repottingFrequency"] = tempR;
-                              if (tempR == null) {
-                                await NotificationService.cancelNotification("${widget.docId}_repot".hashCode);
-                              } else {
-                                updates["lastRepotted"] = FieldValue.serverTimestamp();
-                                await NotificationService.scheduleNotification(
-                                  id: "${widget.docId}_repot".hashCode,
-                                  title: "🪴 Lịch thay chậu!",
-                                  body: "Cây '$plantName' cần được thay chậu hoặc làm tơi đất để rễ phát triển tốt hơn.",
-                                  secondsFromNow: tempR!,
-                                );
+                              if (tempR != rFreq) {
+                                updates["repottingFrequency"] = tempR;
+                                if (tempR != null) updates["lastRepotted"] = FieldValue.serverTimestamp();
                               }
-                            }
 
-                            if (updates.isNotEmpty) {
-                              await FirebaseFirestore.instance.collection('users').doc(uid).collection('user_plants').doc(widget.docId).update(updates);
-                            }
+                              // BƯỚC 1: LƯU FIREBASE TRƯỚC TIÊN (Chắc chắn thành công)
+                              if (updates.isNotEmpty) {
+                                await FirebaseFirestore.instance.collection('users').doc(uid).collection('user_plants').doc(widget.docId).update(updates);
+                              }
 
-                            setModalState(() => _isSettingSchedule = false);
-                            if (ctx.mounted) Navigator.pop(ctx);
+                              // BƯỚC 2: CÀI ĐẶT THÔNG BÁO CỤC BỘ (Tách riêng để không gây chết ứng dụng)
+                              try {
+                                if (tempW != wFreq) {
+                                  if (tempW == null) {
+                                    await NotificationService.cancelNotification("${widget.docId}_water".hashCode.abs());
+                                  } else {
+                                    await NotificationService.scheduleNotification(
+                                      id: "${widget.docId}_water".hashCode.abs(),
+                                      title: "💧 Đã đến lịch tưới nước!",
+                                      body: "Cây '$plantName' đang khát, hãy tưới nước ngay nhé!",
+                                      secondsFromNow: tempW!,
+                                    );
+                                  }
+                                }
+                                if (tempF != fFreq) {
+                                  if (tempF == null) {
+                                    await NotificationService.cancelNotification("${widget.docId}_fertilize".hashCode.abs());
+                                  } else {
+                                    await NotificationService.scheduleNotification(
+                                      id: "${widget.docId}_fertilize".hashCode.abs(),
+                                      title: "🌿 Lịch bón phân!",
+                                      body: "Đến lúc bổ sung dinh dưỡng cho '$plantName' rồi.",
+                                      secondsFromNow: tempF!,
+                                    );
+                                  }
+                                }
+                                if (tempR != rFreq) {
+                                  if (tempR == null) {
+                                    await NotificationService.cancelNotification("${widget.docId}_repot".hashCode.abs());
+                                  } else {
+                                    await NotificationService.scheduleNotification(
+                                      id: "${widget.docId}_repot".hashCode.abs(),
+                                      title: "🪴 Lịch thay chậu!",
+                                      body: "Cây '$plantName' cần được thay chậu hoặc làm tơi đất.",
+                                      secondsFromNow: tempR!,
+                                    );
+                                  }
+                                }
+                              } catch (notifError) {
+                                // Nếu điện thoại chặn thông báo, chỉ in ra màn hình cảnh báo, không làm sập tiến trình
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lưu lịch thành công nhưng hệ thống chặn quyền thông báo: $notifError"), backgroundColor: Colors.orange));
+                                }
+                              }
+
+                            } catch (e) {
+                              // Bắt lỗi toàn cục và hiện lên UI
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi hệ thống: $e"), backgroundColor: Colors.red));
+                              }
+                            } finally {
+                              setModalState(() => _isSettingSchedule = false);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryGreen,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: _isSettingSchedule
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                               : const Text("LƯU LỊCH TRÌNH", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -303,7 +324,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isLogging
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                             : const Text("LƯU NHẬT KÝ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ),
@@ -337,32 +358,38 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
       if (_selectedLogType == 'water') {
         batch.update(plantRef, {"lastWatered": FieldValue.serverTimestamp()});
         if (wFreq != null) {
-          await NotificationService.scheduleNotification(
-            id: "${widget.docId}_water".hashCode,
-            title: "💧 Đã đến lịch tưới nước!",
-            body: "Cây '$plantName' đang khát, hãy tưới nước cho cây nhé!",
-            secondsFromNow: wFreq,
-          );
+          try {
+            await NotificationService.scheduleNotification(
+              id: "${widget.docId}_water".hashCode.abs(),
+              title: "💧 Đã đến lịch tưới nước!",
+              body: "Cây '$plantName' đang khát, hãy tưới nước cho cây nhé!",
+              secondsFromNow: wFreq,
+            );
+          } catch(e) {}
         }
       } else if (_selectedLogType == 'fertilize') {
         batch.update(plantRef, {"lastFertilized": FieldValue.serverTimestamp()});
         if (fFreq != null) {
-          await NotificationService.scheduleNotification(
-            id: "${widget.docId}_fertilize".hashCode,
-            title: "🌿 Lịch bón phân!",
-            body: "Đến lúc bổ sung dinh dưỡng cho '$plantName' rồi.",
-            secondsFromNow: fFreq,
-          );
+          try {
+            await NotificationService.scheduleNotification(
+              id: "${widget.docId}_fertilize".hashCode.abs(),
+              title: "🌿 Lịch bón phân!",
+              body: "Đến lúc bổ sung dinh dưỡng cho '$plantName' rồi.",
+              secondsFromNow: fFreq,
+            );
+          } catch(e) {}
         }
       } else if (_selectedLogType == 'repot') {
         batch.update(plantRef, {"lastRepotted": FieldValue.serverTimestamp()});
         if (rFreq != null) {
-          await NotificationService.scheduleNotification(
-            id: "${widget.docId}_repot".hashCode,
-            title: "🪴 Lịch thay chậu!",
-            body: "Cây '$plantName' cần được thay chậu hoặc làm tơi đất để rễ phát triển tốt hơn.",
-            secondsFromNow: rFreq,
-          );
+          try {
+            await NotificationService.scheduleNotification(
+              id: "${widget.docId}_repot".hashCode.abs(),
+              title: "🪴 Lịch thay chậu!",
+              body: "Cây '$plantName' cần được thay chậu hoặc làm tơi đất để rễ phát triển tốt hơn.",
+              secondsFromNow: rFreq,
+            );
+          } catch(e) {}
         }
       }
 
@@ -456,9 +483,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   }
 
   Widget _buildScheduleSection(Map<String, dynamic> liveData, String plantName) {
-    int? wFreq = liveData['wateringFrequency'];
-    int? fFreq = liveData['fertilizingFrequency'];
-    int? rFreq = liveData['repottingFrequency'];
+    int? wFreq = (liveData['wateringFrequency'] as num?)?.toInt();
+    int? fFreq = (liveData['fertilizingFrequency'] as num?)?.toInt();
+    int? rFreq = (liveData['repottingFrequency'] as num?)?.toInt();
 
     List<Widget> banners = [];
 
@@ -520,9 +547,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         var liveData = snapshot.data!.data() as Map<String, dynamic>;
         String plantName = liveData['customName'] ?? 'Cây trồng';
 
-        int? wFreq = liveData['wateringFrequency'];
-        int? fFreq = liveData['fertilizingFrequency'];
-        int? rFreq = liveData['repottingFrequency'];
+        int? wFreq = (liveData['wateringFrequency'] as num?)?.toInt();
+        int? fFreq = (liveData['fertilizingFrequency'] as num?)?.toInt();
+        int? rFreq = (liveData['repottingFrequency'] as num?)?.toInt();
 
         return Scaffold(
           backgroundColor: Colors.white,
